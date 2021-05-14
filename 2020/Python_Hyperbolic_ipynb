@@ -1,0 +1,188 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Python_Hyperbolic.ipynb의 사본",
+      "provenance": [],
+      "collapsed_sections": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/KKeun-B/learning/blob/main/2020/Python_Hyperbolic_ipynb\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "VCdoEH0Q9PUx"
+      },
+      "source": [
+        "import math\n",
+        "import os\n",
+        "import shutil\n",
+        "import numpy as np"
+      ],
+      "execution_count": 1,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sTas5IYG9UB8"
+      },
+      "source": [
+        "class Hyperbolic:\n",
+        "    PI = math.pi\n",
+        "\n",
+        "    def __init__(self):\n",
+        "        self.scheme = 'Ex_Upwind'\n",
+        "        print(\"Solve Explicit Upwind\")\n",
+        "        self.Scheme_name = \"Explicit_Upwind\"\n",
+        "\n",
+        "    def Initialize(self):\n",
+        "        self.dx = 5.0\n",
+        "        self.dt = 0.02\n",
+        "        self.end_t = 1.0\n",
+        "        self.L = 400\n",
+        "        self.alpha = 250.0\n",
+        "\n",
+        "    def CalDeltaT(self):\n",
+        "        self.dt = self.CFL * self.dx / self.alpha\n",
+        "        self.c = self.CFL * self.CFL\n",
+        "\n",
+        "    def Dir_Write(self):\n",
+        "        self.dirname = \"Hyperbolic,{0},c={1}\".format(self.Scheme_name, self.CFL)\n",
+        "        path = os.getcwd()\n",
+        "        self.dirname = os.path.join(path, self.dirname)\n",
+        "        if os.path.isdir(self.dirname):\n",
+        "            shutil.rmtree(self.dirname)  # 디렉토리가 존재하면 삭제하고 다시 계산# return # 디렉토리가 존재하면 덮어쓰기 #\n",
+        "        os.mkdir(self.dirname)\n",
+        "        return\n",
+        "\n",
+        "    def Para_Write(self):\n",
+        "        filename = \"{0}/{1}, c = {2}.csv.\".format(self.dirname, self.Scheme_name, self.CFL)\n",
+        "        filename = \"%s%.6f\"%(filename, self.time)\n",
+        "        file = open(filename, 'w')\n",
+        "        file.write(\"X,Y,Z,Velocity\\n\")\n",
+        "        for i in range(self.N):\n",
+        "            data = \"%3.3f,%3.3f,%3.3f,%3.3f\\n\" % (float(i*self.dx), 0.0, 0.0, self.U[i])\n",
+        "            file.write(data)\n",
+        "        file.close()\n",
+        "\n",
+        "    def Initial_Condition(self):\n",
+        "        for i in range(int(170.0/self.dx) , int(230.0/self.dx+1)):\n",
+        "            self.U[i] = abs(100.0 * (math.sin(self.PI*(i*self.dx - 50.0)/60.0)))\n",
+        "            self.Unew[i] = abs(100.0 * (math.sin(self.PI*(i*self.dx - 50.0)/60.0)))\n",
+        "            self.Uold[i] = abs(100.0 * (math.sin(self.PI*(i*self.dx - 50.0)/60.0)))\n",
+        "\n",
+        "    def Boundary_Condition(self):\n",
+        "        self.U[0] = 0.0\n",
+        "        self.Unew[0] = 0.0\n",
+        "        self.Uold[0] = 0.0\n",
+        "        self.U[self.N-1] = 0.0\n",
+        "        self.Unew[self.N-1] = 0.0\n",
+        "        self.Uold[self.N-1] = 0.0\n",
+        "\n",
+        "    def Time_Marching(self):\n",
+        "        self.Uold = self.U.copy()\n",
+        "        self.U = self.Unew.copy()\n",
+        "\n",
+        "    def Ex_Upwind(self):\n",
+        "        for i in range(1, self.N-1):\n",
+        "            self.Unew[i] = 2 * (1 - self.c) * self.U[i] - self.Uold[i] + self.c * (self.U[i+1] + self.U[i-1])\n",
+        "\n",
+        "\n",
+        "    def Main(self):\n",
+        "        self.Initialize()\n",
+        "        CFL = [1.0, 0.5, 0.25]\n",
+        "        for i in CFL:\n",
+        "            self.time = 0.0\n",
+        "            self.CFL = i\n",
+        "            self.CalDeltaT()\n",
+        "            self.N = int(float(self.L)/self.dx)\n",
+        "            self.U = np.zeros(self.N)\n",
+        "            self.Unew = np.zeros(self.N)\n",
+        "            self.Uold = np.zeros(self.N)\n",
+        "            self.Initial_Condition()\n",
+        "            self.Boundary_Condition()\n",
+        "            self.iter = int(self.end_t/self.dt)\n",
+        "            self.Dir_Write()\n",
+        "            for j in range(self.iter+1):\n",
+        "                if float(j) % (1.0 / self.CFL) == 0:\n",
+        "                    self.Para_Write()\n",
+        "                self.Ex_Upwind()\n",
+        "                self.Time_Marching()\n",
+        "                self.Boundary_Condition()\n",
+        "                self.time += self.dt\n",
+        "                print(\"\\rCFL = %3.3f, time = %.6f\" % (self.CFL, self.time), end=\"\")\n",
+        "            print()"
+      ],
+      "execution_count": 2,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "TiF4QDa1-D0E",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "9d5b337b-a8e6-4363-ccd7-0162ac5991d5"
+      },
+      "source": [
+        "PyCompute = Hyperbolic()\n",
+        "PyCompute.Main()"
+      ],
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Solve Explicit Upwind\n",
+            "\rCFL = 1.000, time = 0.020000\rCFL = 1.000, time = 0.040000\rCFL = 1.000, time = 0.060000\rCFL = 1.000, time = 0.080000\rCFL = 1.000, time = 0.100000\rCFL = 1.000, time = 0.120000\rCFL = 1.000, time = 0.140000\rCFL = 1.000, time = 0.160000\rCFL = 1.000, time = 0.180000\rCFL = 1.000, time = 0.200000\rCFL = 1.000, time = 0.220000\rCFL = 1.000, time = 0.240000\rCFL = 1.000, time = 0.260000\rCFL = 1.000, time = 0.280000\rCFL = 1.000, time = 0.300000\rCFL = 1.000, time = 0.320000\rCFL = 1.000, time = 0.340000\rCFL = 1.000, time = 0.360000\rCFL = 1.000, time = 0.380000\rCFL = 1.000, time = 0.400000\rCFL = 1.000, time = 0.420000\rCFL = 1.000, time = 0.440000\rCFL = 1.000, time = 0.460000\rCFL = 1.000, time = 0.480000\rCFL = 1.000, time = 0.500000\rCFL = 1.000, time = 0.520000\rCFL = 1.000, time = 0.540000\rCFL = 1.000, time = 0.560000\rCFL = 1.000, time = 0.580000\rCFL = 1.000, time = 0.600000\rCFL = 1.000, time = 0.620000\rCFL = 1.000, time = 0.640000\rCFL = 1.000, time = 0.660000\rCFL = 1.000, time = 0.680000\rCFL = 1.000, time = 0.700000\rCFL = 1.000, time = 0.720000\rCFL = 1.000, time = 0.740000\rCFL = 1.000, time = 0.760000\rCFL = 1.000, time = 0.780000\rCFL = 1.000, time = 0.800000\rCFL = 1.000, time = 0.820000\rCFL = 1.000, time = 0.840000\rCFL = 1.000, time = 0.860000\rCFL = 1.000, time = 0.880000\rCFL = 1.000, time = 0.900000\rCFL = 1.000, time = 0.920000\rCFL = 1.000, time = 0.940000\rCFL = 1.000, time = 0.960000\rCFL = 1.000, time = 0.980000\rCFL = 1.000, time = 1.000000\rCFL = 1.000, time = 1.020000\n",
+            "CFL = 0.500, time = 1.010000\n",
+            "CFL = 0.250, time = 1.005000\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "qQq2LCOk-Flu"
+      },
+      "source": [
+        "!zip -r -qq Hyperbolic,Explicit_Upwind,c=1.0.zip Hyperbolic,Explicit_Upwind,c=1.0\n",
+        "!zip -r -qq Hyperbolic,Explicit_Upwind,c=0.5.zip Hyperbolic,Explicit_Upwind,c=0.5\n",
+        "!zip -r -qq Hyperbolic,Explicit_Upwind,c=0.25.zip Hyperbolic,Explicit_Upwind,c=0.25"
+      ],
+      "execution_count": 4,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "wHtvLdMD-u6B"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
